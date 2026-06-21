@@ -31,13 +31,11 @@ param blobSubjectPrefix string = ''
 @description('Service Bus namespace name (must be globally unique).')
 param serviceBusNamespaceName string
 
-@description('Service Bus namespace SKU.')
+@description('Service Bus namespace SKU. Premium is required for private endpoints.')
 @allowed([
-  'Basic'
-  'Standard'
   'Premium'
 ])
-param serviceBusSku string = 'Standard'
+param serviceBusSku string = 'Premium'
 
 @description('Service Bus queue name.')
 param queueName string = 'aws-splitter-q'
@@ -48,6 +46,25 @@ param systemTopicName string = 'awb-blob-events'
 @description('Event Grid subscription name.')
 param eventSubscriptionName string = 'awb-blob-to-splitter'
 
+// ---------------------------------------------------------------------------
+// Private networking parameters
+// ---------------------------------------------------------------------------
+
+@description('Resource group that holds the hub VNet and the private DNS zones.')
+param networkResourceGroup string = 'azure-vk-hub'
+
+@description('Hub VNet name.')
+param vnetName string = 'vnet-hub'
+
+@description('Subnet (in the hub VNet) where private endpoints are created.')
+param privateEndpointSubnetName string = 'snet-private-endpoints'
+
+@description('Private endpoint name for the Service Bus namespace.')
+param serviceBusPrivateEndpointName string = 'pe-awb-servicebus'
+
+@description('Private endpoint name for the storage account (blob).')
+param storagePrivateEndpointName string = 'pe-awb-blob'
+
 @description('Tags applied to resources.')
 param tags object = {
   workload: 'skycargo-awb'
@@ -55,9 +72,29 @@ param tags object = {
 }
 
 var roleServiceBusDataSender = '69a216fc-b8fb-44d8-bc22-1f3c2cd27a39'
+var dnsZoneServiceBus = 'privatelink.servicebus.windows.net'
+#disable-next-line no-hardcoded-env-urls
+var dnsZoneBlob = 'privatelink.blob.core.windows.net'
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: storageAccountName
+}
+
+// Existing subnet (cross-resource-group) for private endpoints.
+resource peSubnet 'Microsoft.Network/virtualNetworks/subnets@2023-09-01' existing = {
+  name: '${vnetName}/${privateEndpointSubnetName}'
+  scope: resourceGroup(networkResourceGroup)
+}
+
+// Existing private DNS zones (cross-resource-group).
+resource dnsZoneSb 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
+  name: dnsZoneServiceBus
+  scope: resourceGroup(networkResourceGroup)
+}
+
+resource dnsZoneBlobRes 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
+  name: dnsZoneBlob
+  scope: resourceGroup(networkResourceGroup)
 }
 
 resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' = {
@@ -70,6 +107,21 @@ resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2022-10-01-preview
   }
   properties: {
     minimumTlsVersion: '1.2'
+    // Lock down the data plane: clients connect via the private endpoint.
+    // Event Grid still delivers via its managed identity (trusted service).
+    publicNetworkAccess: 'Disabled'
+  }
+}
+
+// Allow trusted Microsoft services (Event Grid) to reach the namespace even
+// though public access is disabled. Without this, Event Grid delivery fails.
+resource serviceBusNetworkRules 'Microsoft.ServiceBus/namespaces/networkRuleSets@2022-10-01-preview' = {
+  parent: serviceBusNamespace
+  name: 'default'
+  properties: {
+    publicNetworkAccess: 'Disabled'
+    defaultAction: 'Deny'
+    trustedServiceAccessEnabled: true
   }
 }
 
@@ -143,7 +195,89 @@ resource eventSubscription 'Microsoft.EventGrid/systemTopics/eventSubscriptions@
   ]
 }
 
+// ---------------------------------------------------------------------------
+// Private endpoints
+// ---------------------------------------------------------------------------
+
+// Service Bus private endpoint (Premium SKU required).
+resource serviceBusPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = {
+  name: serviceBusPrivateEndpointName
+  location: location
+  tags: tags
+  properties: {
+    subnet: {
+      id: peSubnet.id
+    }
+    privateLinkServiceConnections: [
+      {
+        name: serviceBusPrivateEndpointName
+        properties: {
+          privateLinkServiceId: serviceBusNamespace.id
+          groupIds: [
+            'namespace'
+          ]
+        }
+      }
+    ]
+  }
+}
+
+resource serviceBusPeDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-09-01' = {
+  parent: serviceBusPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'servicebus'
+        properties: {
+          privateDnsZoneId: dnsZoneSb.id
+        }
+      }
+    ]
+  }
+}
+
+// Storage blob private endpoint.
+resource storagePrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = {
+  name: storagePrivateEndpointName
+  location: location
+  tags: tags
+  properties: {
+    subnet: {
+      id: peSubnet.id
+    }
+    privateLinkServiceConnections: [
+      {
+        name: storagePrivateEndpointName
+        properties: {
+          privateLinkServiceId: storageAccount.id
+          groupIds: [
+            'blob'
+          ]
+        }
+      }
+    ]
+  }
+}
+
+resource storagePeDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-09-01' = {
+  parent: storagePrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'blob'
+        properties: {
+          privateDnsZoneId: dnsZoneBlobRes.id
+        }
+      }
+    ]
+  }
+}
+
 output serviceBusNamespaceId string = serviceBusNamespace.id
 output queueId string = queue.id
 output systemTopicId string = systemTopic.id
 output systemTopicPrincipalId string = systemTopic.identity.principalId
+output serviceBusPrivateEndpointId string = serviceBusPrivateEndpoint.id
+output storagePrivateEndpointId string = storagePrivateEndpoint.id

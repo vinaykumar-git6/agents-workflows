@@ -11,11 +11,18 @@ param blobSubjectPrefix = '/blobServices/default/containers/awb-input/blobs/pdf/
 
 // Service Bus namespace must be globally unique.
 param serviceBusNamespaceName = 'awb-sb-ek'
-param serviceBusSku = 'Standard'
+param serviceBusSku = 'Premium'
 param queueName = 'aws-splitter-q'
 
 param systemTopicName = 'awb-blob-events'
 param eventSubscriptionName = 'awb-blob-to-splitter'
+
+// Private networking (hub VNet + private DNS zones live in azure-vk-hub).
+param networkResourceGroup = 'azure-vk-hub'
+param vnetName = 'vnet-hub'
+param privateEndpointSubnetName = 'snet-private-endpoints'
+param serviceBusPrivateEndpointName = 'pe-awb-servicebus'
+param storagePrivateEndpointName = 'pe-awb-blob'
 
 param tags = {
   workload: 'skycargo-awb'
