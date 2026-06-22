@@ -1,7 +1,7 @@
 """Blob storage helpers for the OCR worker (keyless / managed identity).
 
 - download_blob(url): fetch the split AWB PDF referenced by an event.
-- upload_outputs(...): write the OCR artifacts (.json + .md) to the output
+- upload_outputs(...): write the AWB artifacts (.json + .md) to the output
   container under a path derived from the source blob.
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 
 BLOB_ACCOUNT_URL = os.getenv("BLOB_ACCOUNT_URL", "")
-# Container where OCR artifacts are written. Kept separate from the input/split
+# Container where AWB artifacts are written. Kept separate from the input/split
 # containers so writes never re-trigger upstream Event Grid subscriptions.
 BLOB_OUTPUT_CONTAINER = os.getenv("BLOB_OUTPUT_CONTAINER", "awb-output")
 AZURE_CLIENT_ID = os.getenv("AZURE_CLIENT_ID") or None

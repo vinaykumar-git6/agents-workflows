@@ -23,7 +23,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from circuit_breaker import CircuitBreaker
+from app.core.circuit_breaker import CircuitBreaker
 
 logger = logging.getLogger("awb.ocr")
 

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-import consumer
-import ocr
-import storage
+from app import consumer
+from app.orchestration import is_enabled as agent_is_enabled
+from app.services import ocr, storage
 
 app = FastAPI(title="AWB OCR Worker", version="1.0.0")
 
@@ -21,6 +21,7 @@ def health() -> dict[str, object]:
     return {
         "status": "ok",
         "ocr_configured": ocr.is_enabled(),
+        "agent_configured": agent_is_enabled(),
         "blob_configured": storage.is_enabled(),
         "servicebus_configured": consumer.is_enabled(),
     }

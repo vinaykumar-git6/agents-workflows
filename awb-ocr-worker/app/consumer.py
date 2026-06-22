@@ -5,8 +5,11 @@ points to a split AWB PDF in the awb-split container), this worker:
 
   1. Reads the blob URL from the event (data.url).
   2. Downloads the PDF from Blob Storage (managed identity, keyless).
-  3. Runs OCR with Azure Document Intelligence (retry + circuit breaker).
-  4. Writes the OCR artifacts (.json + .md) to the awb-output container.
+  3. Runs a Microsoft Agent Framework sequential workflow:
+        OcrExecutor (Document Intelligence) -> AwbFormatterExecutor (Foundry agent).
+  4. Writes the normalized AWB JSON (<awb>.json, from the agent) and the OCR
+     Markdown (<awb>.md) to the awb-output container. The raw OCR result is not
+     persisted as JSON.
 
 Reliability model
 -----------------
@@ -18,6 +21,7 @@ Reliability model
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -29,9 +33,9 @@ from urllib.parse import urlparse
 from azure.identity import DefaultAzureCredential
 from azure.servicebus import ServiceBusClient, ServiceBusMessage
 
-import ocr
-import storage
-from circuit_breaker import CircuitOpenError
+from app.core.circuit_breaker import CircuitOpenError
+from app.orchestration import run_orchestration
+from app.services import storage
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("awb.ocr.consumer")
@@ -82,7 +86,7 @@ def extract_blob_url(message_body: str) -> str | None:
 
 
 def process_message(message_body: str) -> list[str]:
-    """OCR one split AWB PDF end-to-end. Returns the output blob paths."""
+    """OCR + normalize one split AWB PDF end-to-end. Returns the output paths."""
     blob_url = extract_blob_url(message_body)
     if not blob_url:
         logger.warning("Message had no usable blob URL; skipping.")
@@ -95,16 +99,20 @@ def process_message(message_body: str) -> list[str]:
 
     logger.info("OCR processing blob: %s", blob_url)
     pdf_bytes = storage.download_blob(blob_url)
-    result = ocr.run_ocr(pdf_bytes)
 
     source_name = blob_path.rsplit("/", 1)[-1]
+    # Sequential orchestration: OCR executor -> AWB formatting agent.
+    json_text, md_text = asyncio.run(
+        run_orchestration(pdf_bytes, source_name)
+    )
+
     prefix = storage.output_prefix_for(blob_url)
     written = storage.upload_outputs(
         prefix,
-        json_text=ocr.result_to_json(result),
-        md_text=ocr.build_markdown(source_name, result),
+        json_text=json_text,
+        md_text=md_text,
     )
-    logger.info("Wrote OCR outputs: %s", ", ".join(written))
+    logger.info("Wrote AWB outputs: %s", ", ".join(written))
     return written
 
 

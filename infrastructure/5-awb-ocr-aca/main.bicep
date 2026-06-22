@@ -54,6 +54,21 @@ param docIntelEndpoint string = 'https://docintelligencmbc.cognitiveservices.azu
 @description('Document Intelligence model id.')
 param docIntelModel string = 'prebuilt-layout'
 
+@description('Microsoft Foundry (AI Services) account name hosting the chat model.')
+param foundryAccountName string = 'mydevfoundry0603'
+
+@description('Resource group of the Foundry account.')
+param foundryResourceGroup string = 'logicapp-rg'
+
+@description('Azure OpenAI / Foundry endpoint.')
+param azureOpenAiEndpoint string = 'https://mydevfoundry0603.cognitiveservices.azure.com/'
+
+@description('Chat model deployment name used by the AWB agent.')
+param azureOpenAiDeployment string = 'gpt-5.4'
+
+@description('Azure OpenAI API version.')
+param azureOpenAiApiVersion string = '2024-12-01-preview'
+
 @description('Container target port.')
 param targetPort int = 8000
 
@@ -68,6 +83,7 @@ var roleStorageBlobDataContributor = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
 var roleServiceBusDataReceiver = '4f6d3b9b-027b-4f4c-9142-0e5a2a2247e0'
 var roleServiceBusDataSender = '69a216fc-b8fb-44d8-bc22-1f3c2cd27a39'
 var roleCognitiveServicesUser = 'a97b65f3-24c7-4388-baec-2e87135dc908'
+var roleCognitiveServicesOpenAiUser = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
 
 // ---------------------------------------------------------------------------
 // Existing resources
@@ -152,6 +168,18 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
               name: 'DOCUMENTINTELLIGENCE_MODEL'
               value: docIntelModel
             }
+            {
+              name: 'AZURE_OPENAI_ENDPOINT'
+              value: azureOpenAiEndpoint
+            }
+            {
+              name: 'AZURE_OPENAI_DEPLOYMENT'
+              value: azureOpenAiDeployment
+            }
+            {
+              name: 'AZURE_OPENAI_API_VERSION'
+              value: azureOpenAiApiVersion
+            }
           ]
         }
       ]
@@ -198,6 +226,17 @@ module raCognitive 'cognitive-user.bicep' = {
     accountName: docIntelAccountName
     principalId: containerApp.identity.principalId
     roleCognitiveServicesUser: roleCognitiveServicesUser
+  }
+}
+
+// Foundry chat model access for the AWB agent (Cognitive Services OpenAI User).
+module raFoundryOpenAi 'cognitive-user.bicep' = {
+  name: 'ocr-foundry-openai-user'
+  scope: resourceGroup(foundryResourceGroup)
+  params: {
+    accountName: foundryAccountName
+    principalId: containerApp.identity.principalId
+    roleCognitiveServicesUser: roleCognitiveServicesOpenAiUser
   }
 }
 
