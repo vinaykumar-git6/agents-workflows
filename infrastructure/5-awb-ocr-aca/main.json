@@ -1,0 +1,401 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "7064914495176288066"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region."
+      }
+    },
+    "environmentName": {
+      "type": "string",
+      "defaultValue": "cae-skycargo-internal",
+      "metadata": {
+        "description": "Existing internal Container Apps environment (created by the splitter)."
+      }
+    },
+    "acrName": {
+      "type": "string",
+      "metadata": {
+        "description": "Existing Azure Container Registry name."
+      }
+    },
+    "acrResourceGroup": {
+      "type": "string",
+      "defaultValue": "azure-vk-rg",
+      "metadata": {
+        "description": "Resource group that holds the Azure Container Registry."
+      }
+    },
+    "containerImage": {
+      "type": "string",
+      "metadata": {
+        "description": "Container image reference, e.g. <acr>.azurecr.io/awb-ocr-worker:v1."
+      }
+    },
+    "appName": {
+      "type": "string",
+      "defaultValue": "awb-ocr-worker",
+      "metadata": {
+        "description": "Container App name."
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "awbstorageek",
+      "metadata": {
+        "description": "Existing data storage account."
+      }
+    },
+    "outputContainerName": {
+      "type": "string",
+      "defaultValue": "awb-output",
+      "metadata": {
+        "description": "Output blob container for OCR artifacts."
+      }
+    },
+    "serviceBusNamespaceName": {
+      "type": "string",
+      "defaultValue": "awb-sb-ek",
+      "metadata": {
+        "description": "Existing Service Bus namespace that holds the worker queue."
+      }
+    },
+    "queueName": {
+      "type": "string",
+      "defaultValue": "awb-worker-q",
+      "metadata": {
+        "description": "Service Bus queue the worker consumes."
+      }
+    },
+    "docIntelAccountName": {
+      "type": "string",
+      "defaultValue": "docintelligencmbc",
+      "metadata": {
+        "description": "Document Intelligence (Form Recognizer) account name."
+      }
+    },
+    "docIntelResourceGroup": {
+      "type": "string",
+      "defaultValue": "logicapp-rg",
+      "metadata": {
+        "description": "Resource group of the Document Intelligence account."
+      }
+    },
+    "docIntelEndpoint": {
+      "type": "string",
+      "defaultValue": "https://docintelligencmbc.cognitiveservices.azure.com/",
+      "metadata": {
+        "description": "Document Intelligence endpoint."
+      }
+    },
+    "docIntelModel": {
+      "type": "string",
+      "defaultValue": "prebuilt-layout",
+      "metadata": {
+        "description": "Document Intelligence model id."
+      }
+    },
+    "targetPort": {
+      "type": "int",
+      "defaultValue": 8000,
+      "metadata": {
+        "description": "Container target port."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "workload": "skycargo-awb",
+        "component": "awb-ocr-aca"
+      },
+      "metadata": {
+        "description": "Tags applied to resources."
+      }
+    }
+  },
+  "variables": {
+    "roleAcrPull": "7f951dda-4ed3-4680-a7ca-43fe172d538d",
+    "roleStorageBlobDataContributor": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
+    "roleServiceBusDataReceiver": "4f6d3b9b-027b-4f4c-9142-0e5a2a2247e0",
+    "roleServiceBusDataSender": "69a216fc-b8fb-44d8-bc22-1f3c2cd27a39",
+    "roleCognitiveServicesUser": "a97b65f3-24c7-4388-baec-2e87618995b6"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('appName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]",
+        "configuration": {
+          "activeRevisionsMode": "Single",
+          "ingress": {
+            "external": false,
+            "targetPort": "[parameters('targetPort')]",
+            "transport": "auto",
+            "allowInsecure": false
+          },
+          "registries": [
+            {
+              "server": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('acrResourceGroup')), 'Microsoft.ContainerRegistry/registries', parameters('acrName')), '2023-07-01').loginServer]",
+              "identity": "system"
+            }
+          ]
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "[parameters('appName')]",
+              "image": "[parameters('containerImage')]",
+              "resources": {
+                "cpu": "[json('1.0')]",
+                "memory": "2.0Gi"
+              },
+              "env": [
+                {
+                  "name": "BLOB_ACCOUNT_URL",
+                  "value": "[format('https://{0}.blob.{1}', parameters('storageAccountName'), environment().suffixes.storage)]"
+                },
+                {
+                  "name": "BLOB_OUTPUT_CONTAINER",
+                  "value": "[parameters('outputContainerName')]"
+                },
+                {
+                  "name": "SERVICEBUS_NAMESPACE",
+                  "value": "[format('{0}.servicebus.windows.net', parameters('serviceBusNamespaceName'))]"
+                },
+                {
+                  "name": "SERVICEBUS_QUEUE",
+                  "value": "[parameters('queueName')]"
+                },
+                {
+                  "name": "DOCUMENTINTELLIGENCE_ENDPOINT",
+                  "value": "[parameters('docIntelEndpoint')]"
+                },
+                {
+                  "name": "DOCUMENTINTELLIGENCE_MODEL",
+                  "value": "[parameters('docIntelModel')]"
+                }
+              ]
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 5
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('storageAccountName'))]",
+      "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), resourceId('Microsoft.App/containerApps', parameters('appName')), variables('roleStorageBlobDataContributor'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleStorageBlobDataContributor'))]",
+        "principalId": "[reference(resourceId('Microsoft.App/containerApps', parameters('appName')), '2024-03-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/containerApps', parameters('appName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.ServiceBus/namespaces/{0}', parameters('serviceBusNamespaceName'))]",
+      "name": "[guid(resourceId('Microsoft.ServiceBus/namespaces', parameters('serviceBusNamespaceName')), resourceId('Microsoft.App/containerApps', parameters('appName')), variables('roleServiceBusDataReceiver'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleServiceBusDataReceiver'))]",
+        "principalId": "[reference(resourceId('Microsoft.App/containerApps', parameters('appName')), '2024-03-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/containerApps', parameters('appName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.ServiceBus/namespaces/{0}', parameters('serviceBusNamespaceName'))]",
+      "name": "[guid(resourceId('Microsoft.ServiceBus/namespaces', parameters('serviceBusNamespaceName')), resourceId('Microsoft.App/containerApps', parameters('appName')), variables('roleServiceBusDataSender'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleServiceBusDataSender'))]",
+        "principalId": "[reference(resourceId('Microsoft.App/containerApps', parameters('appName')), '2024-03-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/containerApps', parameters('appName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "ocr-acrpull",
+      "resourceGroup": "[parameters('acrResourceGroup')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "acrName": {
+            "value": "[parameters('acrName')]"
+          },
+          "principalId": {
+            "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('appName')), '2024-03-01', 'full').identity.principalId]"
+          },
+          "roleAcrPull": {
+            "value": "[variables('roleAcrPull')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "17481114067647758682"
+            }
+          },
+          "parameters": {
+            "acrName": {
+              "type": "string",
+              "metadata": {
+                "description": "Existing ACR name."
+              }
+            },
+            "principalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Principal id to grant AcrPull to."
+              }
+            },
+            "roleAcrPull": {
+              "type": "string",
+              "metadata": {
+                "description": "AcrPull role definition GUID."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.ContainerRegistry/registries/{0}', parameters('acrName'))]",
+              "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', parameters('acrName')), parameters('principalId'), parameters('roleAcrPull'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleAcrPull'))]",
+                "principalId": "[parameters('principalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/containerApps', parameters('appName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "ocr-cognitive-user",
+      "resourceGroup": "[parameters('docIntelResourceGroup')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "accountName": {
+            "value": "[parameters('docIntelAccountName')]"
+          },
+          "principalId": {
+            "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('appName')), '2024-03-01', 'full').identity.principalId]"
+          },
+          "roleCognitiveServicesUser": {
+            "value": "[variables('roleCognitiveServicesUser')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "6864429437089861029"
+            }
+          },
+          "parameters": {
+            "accountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Existing Cognitive Services / Document Intelligence account name."
+              }
+            },
+            "principalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Principal id to grant the role to."
+              }
+            },
+            "roleCognitiveServicesUser": {
+              "type": "string",
+              "metadata": {
+                "description": "Cognitive Services User role definition GUID."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.CognitiveServices/accounts/{0}', parameters('accountName'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('accountName')), parameters('principalId'), parameters('roleCognitiveServicesUser'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleCognitiveServicesUser'))]",
+                "principalId": "[parameters('principalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/containerApps', parameters('appName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "containerAppId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.App/containerApps', parameters('appName'))]"
+    },
+    "internalFqdn": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('appName')), '2024-03-01').configuration.ingress.fqdn]"
+    },
+    "appPrincipalId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('appName')), '2024-03-01', 'full').identity.principalId]"
+    }
+  }
+}
