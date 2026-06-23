@@ -29,9 +29,6 @@ logger = logging.getLogger("awb.orchestrator")
 
 __all__ = ["is_enabled", "run_orchestration"]
 
-# Workflow is stateless and reused across messages.
-_workflow = None
-
 
 def _build_workflow():
     agent = create_agent()
@@ -39,26 +36,24 @@ def _build_workflow():
     formatter = AwbFormatterExecutor(agent=agent)
 
     return (
-        WorkflowBuilder()
-        .set_start_executor(ocr_executor)
+        WorkflowBuilder(start_executor=ocr_executor)
         .add_edge(ocr_executor, formatter)
         .build()
     )
-
-
-def _get_workflow():
-    global _workflow
-    if _workflow is None:
-        _workflow = _build_workflow()
-    return _workflow
 
 
 async def run_orchestration(pdf_bytes: bytes, source_name: str) -> tuple[str, str]:
     """Run OCR -> AWB-agent sequential workflow.
 
     Returns (normalized_json_text, ocr_markdown_text).
+
+    A fresh workflow is built per call: the Agent Framework workflow creates
+    asyncio primitives (queues/futures) bound to the *current* event loop. The
+    consumer invokes this via ``asyncio.run`` per message (a new loop each
+    time), so a cached workflow would raise "bound to a different event loop"
+    on the second message.
     """
-    workflow = _get_workflow()
+    workflow = _build_workflow()
     run_result = await workflow.run(
         OcrRequest(pdf_bytes=pdf_bytes, source_name=source_name)
     )

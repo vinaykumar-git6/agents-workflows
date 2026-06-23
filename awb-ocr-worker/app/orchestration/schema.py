@@ -47,7 +47,3 @@ class AwbDocument(BaseModel):
     declared_value_for_carriage: Optional[str] = None
     declared_value_for_customs: Optional[str] = None
     handling_information: Optional[str] = None
-    other_fields: dict[str, str] = Field(
-        default_factory=dict,
-        description="Any additional labelled fields not covered above.",
-    )

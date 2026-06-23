@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 $RG            = 'emirates-ai-usecase'
 $ACR          = 'acrvk012826'                   # existing ACR
 $ACR_RG       = 'azure-vk-rg'                    # resource group that holds the ACR
-$IMAGE        = 'awb-ocr-worker:v1'
+$IMAGE        = 'awb-ocr-worker:v2'
 $SOURCE_DIR   = '../../awb-ocr-worker'           # app source (Dockerfile lives here)
 
 # ---- 1. Build the image into the existing ACR (no local Docker) ----

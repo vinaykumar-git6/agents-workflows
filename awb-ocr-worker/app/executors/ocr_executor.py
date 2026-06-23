@@ -17,8 +17,10 @@ class OcrExecutor(Executor):
 
     @handler
     async def run(self, request: OcrRequest, ctx: WorkflowContext[OcrPayload]) -> None:
+        logger.info("OCR -> starting for %s (%d bytes).", request.source_name, len(request.pdf_bytes))
         result = ocr.run_ocr(request.pdf_bytes)  # retry + circuit breaker inside
         text = result.content or ""
         markdown = ocr.build_markdown(request.source_name, result)
-        logger.info("OCR completed for %s (%d chars).", request.source_name, len(text))
+        logger.info("OCR <- completed for %s (%d chars).", request.source_name, len(text))
+        logger.debug("OCR <- extracted text for %s:\n%s", request.source_name, text)
         await ctx.send_message(OcrPayload(text=text, markdown=markdown))

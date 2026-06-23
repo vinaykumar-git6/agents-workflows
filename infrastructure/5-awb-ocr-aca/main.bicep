@@ -61,7 +61,7 @@ param foundryAccountName string = 'mydevfoundry0603'
 param foundryResourceGroup string = 'logicapp-rg'
 
 @description('Azure OpenAI / Foundry endpoint.')
-param azureOpenAiEndpoint string = 'https://mydevfoundry0603.cognitiveservices.azure.com/'
+param azureOpenAiEndpoint string = 'https://mydevfoundry0603.openai.azure.com/'
 
 @description('Chat model deployment name used by the AWB agent.')
 param azureOpenAiDeployment string = 'gpt-5.4'
@@ -184,22 +184,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         }
       ]
       scale: {
-        minReplicas: 0
+        minReplicas: 1
         maxReplicas: 5
-        rules: [
-          {
-            name: 'sb-queue-length'
-            custom: {
-              type: 'azure-servicebus'
-              identity: 'system'
-              metadata: {
-                namespace: serviceBusNamespaceName
-                queueName: queueName
-                messageCount: '5'
-              }
-            }
-          }
-        ]
       }
     }
   }

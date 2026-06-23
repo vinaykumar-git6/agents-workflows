@@ -7,9 +7,8 @@ from __future__ import annotations
 
 import os
 
-from agent_framework import ChatAgent
-from agent_framework.azure import AzureOpenAIChatClient
-from azure.identity.aio import DefaultAzureCredential as AioDefaultAzureCredential
+from openai import AzureOpenAI
+from azure.identity import DefaultAzureCredential
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -54,24 +53,23 @@ def is_enabled() -> bool:
     return bool(AZURE_OPENAI_ENDPOINT)
 
 
-def _credential() -> AioDefaultAzureCredential:
+def _credential() -> DefaultAzureCredential:
     if AZURE_CLIENT_ID:
-        return AioDefaultAzureCredential(managed_identity_client_id=AZURE_CLIENT_ID)
-    return AioDefaultAzureCredential()
+        return DefaultAzureCredential(managed_identity_client_id=AZURE_CLIENT_ID)
+    return DefaultAzureCredential()
 
 
-def create_agent() -> ChatAgent:
-    """Build the deterministic AWB normalization chat agent."""
+def create_agent() -> "object":
+    """Build the deterministic AWB normalization chat agent.
+    
+    Returns an OpenAI client configured for Azure OpenAI with structured output.
+    """
     if not AZURE_OPENAI_ENDPOINT:
         raise RuntimeError("AZURE_OPENAI_ENDPOINT is not configured.")
 
-    chat_client = AzureOpenAIChatClient(
-        endpoint=AZURE_OPENAI_ENDPOINT,
-        deployment_name=AZURE_OPENAI_DEPLOYMENT,
+    client = AzureOpenAI(
         api_version=AZURE_OPENAI_API_VERSION,
-        credential=_credential(),
+        azure_endpoint=AZURE_OPENAI_ENDPOINT,
+        azure_ad_token_provider=lambda: _credential().get_token("https://cognitiveservices.azure.com/.default").token,
     )
-    return chat_client.create_agent(
-        name="awb-agent",
-        instructions=AGENT_INSTRUCTIONS,
-    )
+    return client

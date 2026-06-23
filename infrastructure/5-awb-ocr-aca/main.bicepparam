@@ -6,7 +6,7 @@ param environmentName = 'cae-skycargo-internal'
 
 param acrName = 'acrvk012826'
 param acrResourceGroup = 'azure-vk-rg'
-param containerImage = 'acrvk012826.azurecr.io/awb-ocr-worker:v1'
+param containerImage = 'acrvk012826.azurecr.io/awb-ocr-worker:v2'
 
 param appName = 'awb-ocr-worker'
 
