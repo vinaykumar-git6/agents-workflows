@@ -1,3 +1,4 @@
+param subscriptionId string = '00000000-0000-0000-0000-000000000000'
 param workflows_aawb_ingest_name string = 'aawb-ingest'
 param connections_azureblob_1_name string = 'azureblob-1'
 param virtualNetworks_vnet_ek_name string = 'vnet-ek'
@@ -17,9 +18,9 @@ param workspaces_log_skycargo_aca_name string = 'log-skycargo-aca'
 param networkSecurityGroups_vnet_ek_snet_aca_infra_nsg_uaenorth_name string = 'vnet-ek-snet-aca-infra-nsg-uaenorth'
 param networkSecurityGroups_vnet_ek_snet_integration_nsg_uaenorth_name string = 'vnet-ek-snet-integration-nsg-uaenorth'
 param networkSecurityGroups_vnet_ek_snet_privateendpoints_nsg_uaenorth_name string = 'vnet-ek-snet-privateendpoints-nsg-uaenorth'
-param virtualNetworks_vnet_hub_externalid string = '/subscriptions/7d1e8453-2920-4f6d-9a6e-bc7005c10a22/resourceGroups/azure-vk-hub/providers/Microsoft.Network/virtualNetworks/vnet-hub'
-param privateDnsZones_privatelink_blob_core_windows_net_externalid string = '/subscriptions/7d1e8453-2920-4f6d-9a6e-bc7005c10a22/resourceGroups/azure-vk-hub/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net'
-param privateDnsZones_privatelink_servicebus_windows_net_externalid string = '/subscriptions/7d1e8453-2920-4f6d-9a6e-bc7005c10a22/resourceGroups/azure-vk-hub/providers/Microsoft.Network/privateDnsZones/privatelink.servicebus.windows.net'
+param virtualNetworks_vnet_hub_externalid string = '/subscriptions/${subscriptionId}/resourceGroups/azure-vk-hub/providers/Microsoft.Network/virtualNetworks/vnet-hub'
+param privateDnsZones_privatelink_blob_core_windows_net_externalid string = '/subscriptions/${subscriptionId}/resourceGroups/azure-vk-hub/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net'
+param privateDnsZones_privatelink_servicebus_windows_net_externalid string = '/subscriptions/${subscriptionId}/resourceGroups/azure-vk-hub/providers/Microsoft.Network/privateDnsZones/privatelink.servicebus.windows.net'
 
 resource networkSecurityGroups_vnet_ek_snet_aca_infra_nsg_uaenorth_name_resource 'Microsoft.Network/networkSecurityGroups@2025-05-01' = {
   name: networkSecurityGroups_vnet_ek_snet_aca_infra_nsg_uaenorth_name
@@ -95,7 +96,7 @@ resource storageAccounts_awbstorageek_name_resource 'Microsoft.Storage/storageAc
       resourceAccessRules: [
         {
           tenantId: '16b3c013-d300-468d-ac64-7eda0820b6d3'
-          resourceId: '/subscriptions/7d1e8453-2920-4f6d-9a6e-bc7005c10a22/providers/Microsoft.Security/datascanners/StorageDataScanner'
+          resourceId: '/subscriptions/${subscriptionId}/providers/Microsoft.Security/datascanners/StorageDataScanner'
         }
       ]
       bypass: 'AzureServices'
@@ -141,12 +142,12 @@ resource connections_azureblob_1_name_resource 'Microsoft.Web/connections@2016-0
       description: 'Microsoft Azure Storage provides a massively scalable, durable, and highly available storage for data on the cloud, and serves as the data storage solution for modern applications. Connect to Blob Storage to perform various operations such as create, update, get and delete on blobs in your Azure Storage account.'
       iconUri: 'https://conn-afd-prod-endpoint-bmc9bqahasf3grgk.b01.azurefd.net/releases/v1.0.1800/1.0.1800.4648/azureblob/icon.png'
       brandColor: '#804998'
-      id: '/subscriptions/7d1e8453-2920-4f6d-9a6e-bc7005c10a22/providers/Microsoft.Web/locations/uaenorth/managedApis/azureblob'
+      id: '/subscriptions/${subscriptionId}/providers/Microsoft.Web/locations/uaenorth/managedApis/azureblob'
       type: 'Microsoft.Web/locations/managedApis'
     }
     testLinks: [
       {
-        requestUri: 'https://management.azure.com:443/subscriptions/7d1e8453-2920-4f6d-9a6e-bc7005c10a22/resourceGroups/emirates-ai-usecase/providers/Microsoft.Web/connections/${connections_azureblob_1_name}/extensions/proxy/testconnection?api-version=2016-06-01'
+        requestUri: 'https://management.azure.com:443/subscriptions/${subscriptionId}/resourceGroups/emirates-ai-usecase/providers/Microsoft.Web/connections/${connections_azureblob_1_name}/extensions/proxy/testconnection?api-version=2016-06-01'
         method: 'get'
       }
     ]
@@ -178,12 +179,12 @@ resource connections_azureblob_aawb_ingest_name_resource 'Microsoft.Web/connecti
       description: 'Microsoft Azure Storage provides a massively scalable, durable, and highly available storage for data on the cloud, and serves as the data storage solution for modern applications. Connect to Blob Storage to perform various operations such as create, update, get and delete on blobs in your Azure Storage account.'
       iconUri: 'https://conn-afd-prod-endpoint-bmc9bqahasf3grgk.b01.azurefd.net/releases/v1.0.1800/1.0.1800.4648/azureblob/icon.png'
       brandColor: '#804998'
-      id: '/subscriptions/7d1e8453-2920-4f6d-9a6e-bc7005c10a22/providers/Microsoft.Web/locations/uaenorth/managedApis/azureblob'
+      id: '/subscriptions/${subscriptionId}/providers/Microsoft.Web/locations/uaenorth/managedApis/azureblob'
       type: 'Microsoft.Web/locations/managedApis'
     }
     testLinks: [
       {
-        requestUri: 'https://management.azure.com:443/subscriptions/7d1e8453-2920-4f6d-9a6e-bc7005c10a22/resourceGroups/emirates-ai-usecase/providers/Microsoft.Web/connections/${connections_azureblob_aawb_ingest_name}/extensions/proxy/testconnection?api-version=2016-06-01'
+        requestUri: 'https://management.azure.com:443/subscriptions/${subscriptionId}/resourceGroups/emirates-ai-usecase/providers/Microsoft.Web/connections/${connections_azureblob_aawb_ingest_name}/extensions/proxy/testconnection?api-version=2016-06-01'
         method: 'get'
       }
     ]
@@ -210,12 +211,12 @@ resource connections_sharepointonline_1_name_resource 'Microsoft.Web/connections
       displayName: 'SharePoint'
       description: 'SharePoint helps organizations share and collaborate with colleagues, partners, and customers. You can connect to SharePoint Online or to an on-premises SharePoint 2016 or 2019 farm using the On-Premises Data Gateway to manage documents and list items.'
       iconUri: 'https://static.powerapps.com/resource/ppcr/releases/v1.0.1769/1.0.1769.4361/sharepointonline/icon.png'
-      id: '/subscriptions/7d1e8453-2920-4f6d-9a6e-bc7005c10a22/providers/Microsoft.Web/locations/uaenorth/managedApis/sharepointonline'
+      id: '/subscriptions/${subscriptionId}/providers/Microsoft.Web/locations/uaenorth/managedApis/sharepointonline'
       type: 'Microsoft.Web/locations/managedApis'
     }
     testLinks: [
       {
-        requestUri: 'https://management.azure.com:443/subscriptions/7d1e8453-2920-4f6d-9a6e-bc7005c10a22/resourceGroups/emirates-ai-usecase/providers/Microsoft.Web/connections/${connections_sharepointonline_1_name}/extensions/proxy/datasets?api-version=2016-06-01'
+        requestUri: 'https://management.azure.com:443/subscriptions/${subscriptionId}/resourceGroups/emirates-ai-usecase/providers/Microsoft.Web/connections/${connections_sharepointonline_1_name}/extensions/proxy/datasets?api-version=2016-06-01'
         method: 'get'
       }
     ]
@@ -247,12 +248,12 @@ resource connections_sharepointonline_aawb_ingest_name_resource 'Microsoft.Web/c
       displayName: 'SharePoint'
       description: 'SharePoint helps organizations share and collaborate with colleagues, partners, and customers. You can connect to SharePoint Online or to an on-premises SharePoint 2016 or 2019 farm using the On-Premises Data Gateway to manage documents and list items.'
       iconUri: 'https://static.powerapps.com/resource/ppcr/releases/v1.0.1769/1.0.1769.4361/sharepointonline/icon.png'
-      id: '/subscriptions/7d1e8453-2920-4f6d-9a6e-bc7005c10a22/providers/Microsoft.Web/locations/uaenorth/managedApis/sharepointonline'
+      id: '/subscriptions/${subscriptionId}/providers/Microsoft.Web/locations/uaenorth/managedApis/sharepointonline'
       type: 'Microsoft.Web/locations/managedApis'
     }
     testLinks: [
       {
-        requestUri: 'https://management.azure.com:443/subscriptions/7d1e8453-2920-4f6d-9a6e-bc7005c10a22/resourceGroups/emirates-ai-usecase/providers/Microsoft.Web/connections/${connections_sharepointonline_aawb_ingest_name}/extensions/proxy/datasets?api-version=2016-06-01'
+        requestUri: 'https://management.azure.com:443/subscriptions/${subscriptionId}/resourceGroups/emirates-ai-usecase/providers/Microsoft.Web/connections/${connections_sharepointonline_aawb_ingest_name}/extensions/proxy/datasets?api-version=2016-06-01'
         method: 'get'
       }
     ]
@@ -11199,12 +11200,12 @@ resource workflows_aawb_ingest_name_resource 'Microsoft.Logic/workflows@2017-07-
           sharepointonline: {
             connectionId: connections_sharepointonline_aawb_ingest_name_resource.id
             connectionName: 'sharepointonline-${workflows_aawb_ingest_name}'
-            id: '/subscriptions/7d1e8453-2920-4f6d-9a6e-bc7005c10a22/providers/Microsoft.Web/locations/uaenorth/managedApis/sharepointonline'
+            id: '/subscriptions/${subscriptionId}/providers/Microsoft.Web/locations/uaenorth/managedApis/sharepointonline'
           }
           azureblob: {
             connectionId: connections_azureblob_aawb_ingest_name_resource.id
             connectionName: 'azureblob-${workflows_aawb_ingest_name}'
-            id: '/subscriptions/7d1e8453-2920-4f6d-9a6e-bc7005c10a22/providers/Microsoft.Web/locations/uaenorth/managedApis/azureblob'
+            id: '/subscriptions/${subscriptionId}/providers/Microsoft.Web/locations/uaenorth/managedApis/azureblob'
             connectionProperties: {
               authentication: {
                 type: 'ManagedServiceIdentity'
